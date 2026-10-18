@@ -35,6 +35,7 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         var furniture = 0;
         var containers = 0;
         var flora = 0;
+        var doors = 0;
         var items = 0;
         foreach (var reference in file.References)
         {
@@ -62,6 +63,11 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
                 SetPlaced(EntityHandle.Of(entities.Create<Flora>(Scope.Of(cell))), reference);
                 flora++;
             }
+            else if (reference.BaseType == FormType.Door)
+            {
+                SeedDoor(cell, reference);
+                doors++;
+            }
             else
             {
                 SeedItem(cell, reference);
@@ -69,7 +75,7 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
             }
         }
 
-        logger.LogInformation("Seeded {Furniture} furniture, {Containers} containers, {Flora} plants and {Items} items in {Cell}", furniture, containers, flora, items, cellId);
+        logger.LogInformation("Seeded {Furniture} furniture, {Containers} containers, {Flora} plants, {Doors} doors and {Items} items in {Cell}", furniture, containers, flora, doors, items, cellId);
     }
 
     private void SeedContainer(Cell cell, RefRecord reference)
@@ -97,6 +103,25 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         // Not rolled here: no player is in the cell yet. CellRespawnSystem rolls it at the first master's level.
         var container = entities.Create<Container>(Scope.Of(cell));
         SetPlaced(EntityHandle.Of(container), reference);
+        SeedLock(EntityHandle.Of(container).As<LockState>(), reference);
+    }
+
+    private void SeedDoor(Cell cell, RefRecord reference)
+    {
+        var door = entities.Create<Door>(Scope.Of(cell));
+        SetPlaced(EntityHandle.Of(door), reference);
+        SeedLock(EntityHandle.Of(door).As<LockState>(), reference);
+    }
+
+    private static void SeedLock(LockState lockState, RefRecord reference)
+    {
+        if (reference.Lock is not { } lockRecord)
+            return;
+
+        lockState.IsLocked = true;
+        lockState.Level = lockRecord.Level;
+        lockState.Key = new FormId(lockRecord.KeyId ?? 0);
+        lockState.IsLeveled = lockRecord.IsLeveled == true;
     }
 
     private void SeedItem(Cell cell, RefRecord reference)

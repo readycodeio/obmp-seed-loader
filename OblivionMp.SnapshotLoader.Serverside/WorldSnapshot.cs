@@ -9,7 +9,7 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 
 public sealed class WorldSnapshot
 {
-    private const int SchemaVersion = 5;
+    public const int SchemaVersion = 6;
 
     private const string SeedFileName = "seed.zip";
     private const string WorldFolder = "world";

@@ -68,6 +68,7 @@ public struct LockRecord
 {
     public byte Level;
     public uint? KeyId;
+    public bool? IsLeveled;
 }
 
 public struct OwnerRecord
