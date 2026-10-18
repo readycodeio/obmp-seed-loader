@@ -103,25 +103,27 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         // Not rolled here: no player is in the cell yet. CellRespawnSystem rolls it at the first master's level.
         var container = entities.Create<Container>(Scope.Of(cell));
         SetPlaced(EntityHandle.Of(container), reference);
-        SeedLock(EntityHandle.Of(container).As<LockState>(), reference);
+        SeedLock(EntityHandle.Of(container), reference);
     }
 
     private void SeedDoor(Cell cell, RefRecord reference)
     {
         var door = entities.Create<Door>(Scope.Of(cell));
         SetPlaced(EntityHandle.Of(door), reference);
-        SeedLock(EntityHandle.Of(door).As<LockState>(), reference);
+        SeedLock(EntityHandle.Of(door), reference);
     }
 
-    private static void SeedLock(LockState lockState, RefRecord reference)
+    private static void SeedLock(EntityHandle holder, RefRecord reference)
     {
         if (reference.Lock is not { } lockRecord)
             return;
 
+        var lockState = holder.As<LockState>();
         lockState.IsLocked = true;
         lockState.Level = lockRecord.Level;
-        lockState.Key = new FormId(lockRecord.KeyId ?? 0);
-        lockState.IsLeveled = lockRecord.IsLeveled == true;
+        var seedOrigin = holder.As<LockSeedOrigin>();
+        seedOrigin.Key = new FormId(lockRecord.KeyId ?? 0);
+        seedOrigin.IsLeveled = lockRecord.IsLeveled == true;
     }
 
     private void SeedItem(Cell cell, RefRecord reference)
