@@ -47,6 +47,7 @@ public struct RefRecord
     public LockRecord? Lock;
     public OwnerRecord? Owner;
     public TeleportRecord? Teleport;
+    public bool? IsOpenByDefault;
     public uint? MerchantContainerRefId;
     public uint? MerchantRefId;
     public int? BarterGold;

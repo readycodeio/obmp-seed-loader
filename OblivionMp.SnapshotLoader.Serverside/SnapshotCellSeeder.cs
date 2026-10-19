@@ -111,6 +111,9 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         var door = entities.Create<Door>(Scope.Of(cell));
         SetPlaced(EntityHandle.Of(door), reference);
         SeedLock(EntityHandle.Of(door), reference);
+        var isOpenByDefault = reference.IsOpenByDefault == true;
+        EntityHandle.Of(door).As<DoorSeedOrigin>().IsOpenByDefault = isOpenByDefault;
+        EntityHandle.Of(door).As<DoorState>().IsOpen = isOpenByDefault;
     }
 
     private static void SeedLock(EntityHandle holder, RefRecord reference)
