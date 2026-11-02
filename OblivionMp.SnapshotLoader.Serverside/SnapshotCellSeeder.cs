@@ -36,6 +36,7 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         var containers = 0;
         var flora = 0;
         var doors = 0;
+        var activators = 0;
         var items = 0;
         foreach (var reference in file.References)
         {
@@ -68,6 +69,11 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
                 SeedDoor(cell, reference);
                 doors++;
             }
+            else if (reference.BaseType == FormType.Activator)
+            {
+                SetPlaced(EntityHandle.Of(entities.Create<WorldActivator>(Scope.Of(cell))), reference);
+                activators++;
+            }
             else
             {
                 SeedItem(cell, reference);
@@ -75,7 +81,7 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
             }
         }
 
-        logger.LogInformation("Seeded {Furniture} furniture, {Containers} containers, {Flora} plants, {Doors} doors and {Items} items in {Cell}", furniture, containers, flora, doors, items, cellId);
+        logger.LogInformation("Seeded {Furniture} furniture, {Containers} containers, {Flora} plants, {Doors} doors, {Activators} activators and {Items} items in {Cell}", furniture, containers, flora, doors, activators, items, cellId);
     }
 
     private void SeedContainer(Cell cell, RefRecord reference)
@@ -112,8 +118,36 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         SetPlaced(EntityHandle.Of(door), reference);
         SeedLock(EntityHandle.Of(door), reference);
         var isOpenByDefault = reference.IsOpenByDefault == true;
-        EntityHandle.Of(door).As<DoorwaySeedOrigin>().IsOpenByDefault = isOpenByDefault;
+        var seedOrigin = EntityHandle.Of(door).As<DoorwaySeedOrigin>();
+        seedOrigin.IsOpenByDefault = isOpenByDefault;
+        seedOrigin.LinkedRefId = reference.Teleport?.DestinationRefId ?? 0;
         EntityHandle.Of(door).As<Doorway>().IsOpen = isOpenByDefault;
+        // The other door of the pair may have been seeded and unlocked long before this cell
+        if (seedOrigin.LinkedRefId != 0 && TryFindDoor(seedOrigin.LinkedRefId, out var partner))
+            CopyLock(partner, door);
+    }
+
+    private bool TryFindDoor(uint refId, out Door door)
+    {
+        foreach (var candidate in entities.Query<Door>())
+        {
+            if (candidate.RefId == refId)
+            {
+                door = candidate;
+                return true;
+            }
+        }
+
+        door = default;
+        return false;
+    }
+
+    private static void CopyLock(Door from, Door to)
+    {
+        var source = EntityHandle.Of(from).As<LockState>();
+        var target = EntityHandle.Of(to).As<LockState>();
+        target.IsLocked = source.IsLocked;
+        target.Level = source.Level;
     }
 
     private static void SeedLock(EntityHandle holder, RefRecord reference)
