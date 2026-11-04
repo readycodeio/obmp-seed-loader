@@ -45,5 +45,5 @@ once, as `OblivionSdkVersion` in `Directory.Build.props`.
 Use `Debug` instead of `Release` to include `.pdb` symbol files. The seed, when you have fetched it, goes into the
 mod folder as `server/content/seed.zip`.
 
-Copy `Output/mods/OblivionMp.SeedLoader/` into your server's `mods/` directory, next to the `OblivionMp.Sdk` mod,
+Copy `Output/mods/OblivionMp.SeedLoader/` into your server's `mods/` directory, next to the `OblivionMP.SDK` mod,
 and restart the server.
