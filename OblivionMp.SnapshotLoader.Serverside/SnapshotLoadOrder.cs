@@ -1,9 +1,8 @@
 using Microsoft.Extensions.Logging;
 using OblivionMP.SDK.Common.Archetypes.Mixins;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
+using ReadyM.SDK.Server.Events;
 using ReadyM.Native.Container;
 
 namespace OblivionMp.SnapshotLoader.Serverside;
@@ -16,12 +15,12 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 public sealed partial class SnapshotLoadOrder(WorldSnapshot snapshot, IEntities entities, IServerEvents events, ILogger logger)
 {
     private void Start()
-        => events.OnWorldEntityCreated += OnWorldEntityCreatedHandler;
+        => events.OnWorldCreated += OnWorldCreated;
 
     private void Stop()
-        => events.OnWorldEntityCreated -= OnWorldEntityCreatedHandler;
+        => events.OnWorldCreated -= OnWorldCreated;
 
-    private void OnWorldEntityCreatedHandler(Entity entity)
+    private void OnWorldCreated(ReadyM.SDK.Archetypes.Core.World created)
     {
         var world = entities.World;
         while (world.PluginsCount > 0)
