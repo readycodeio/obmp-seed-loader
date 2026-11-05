@@ -1,12 +1,15 @@
 <Project>
 
+    <!-- Build settings from the folder above, when it has any -->
+    <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" Condition="Exists('$(MSBuildThisFileDirectory)..\Directory.Build.props')" />
+
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
         <!-- The OblivionMP SDK packages every project builds against -->
-        <OblivionSdkVersion>1.0.0-rc.3</OblivionSdkVersion>
+        <OblivionSdkVersion>1.1.0</OblivionSdkVersion>
     </PropertyGroup>
 
 </Project>
