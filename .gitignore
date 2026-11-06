@@ -56,8 +56,10 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 
-# The fetched seed. Hosted in blob storage, not in git.
-/OblivionMp.SnapshotLoader.Serverside/seed/
+# The seed folder holds the seed (seed.zip, in Git LFS) and nothing else that is tracked: an extracted world/
+# folder, made to build a new zip from, stays out of git.
+/OblivionMp.SnapshotLoader.Serverside/seed/*
+!/OblivionMp.SnapshotLoader.Serverside/seed/seed.zip
 
 # Template build artifacts
 build.log
