@@ -20,13 +20,16 @@ Without it, or with one written for another schema version, the mod logs a warni
 
 ## The seed
 
-The seed is hosted in blob storage, not in git:
-[seed.zip](https://readycodestorage.blob.core.windows.net/public/obmp/seed.zip). Download it, without extracting it,
-into `OblivionMp.SnapshotLoader.Serverside/seed/`, which git ignores, so that `seed/seed.zip` exists. With the
-OblivionMP mod repository cloned next to this one, its `scripts/FetchSeed.ps1` fetches it.
+The seed is in this repository, in [Git LFS](https://git-lfs.com):
+`OblivionMp.SnapshotLoader.Serverside/seed/seed.zip`. Install Git LFS before cloning (Git for Windows includes it)
+and the clone brings the zip. A clone made without it holds a small text pointer in the zip's place; run
+`git lfs pull` to replace it with the zip.
+
+A new seed is a commit: replace `seed/seed.zip` and commit it, and Git LFS stores the new zip. Nothing else names
+the file.
 
 Its files are under `world/` in the zip, compressed with Deflate, which .NET reads (unlike LZMA or BZip2, which some
-7-Zip settings use). To make one from an extracted `seed/world/` folder, in PowerShell 7:
+7-Zip settings use). To make one from an extracted `seed/world/` folder, which git ignores, in PowerShell 7:
 
 ```powershell
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -42,8 +45,8 @@ once, as `OblivionSdkVersion` in `Directory.Build.props`.
 .\MakeModFolder.ps1 Release                  # the mod, into Output/mods/OblivionMp.SeedLoader
 ```
 
-Use `Debug` instead of `Release` to include `.pdb` symbol files. The seed, when you have fetched it, goes into the
-mod folder as `server/content/seed.zip`.
+Use `Debug` instead of `Release` to include `.pdb` symbol files. The seed goes into the mod folder as
+`server/content/seed.zip`.
 
 Copy `Output/mods/OblivionMp.SeedLoader/` into your server's `mods/` directory, next to the `OblivionMP.SDK` mod,
 and restart the server.

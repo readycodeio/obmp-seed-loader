@@ -145,7 +145,15 @@ Copy-BuildArtifacts -Files $serverContentFiles -BaseDir $contentDir -DestRoot $s
 if ($serverDataFile)
 {
     $data = Join-Path $scriptDir $serverDataFile
-    if (Test-Path $data -PathType Leaf)
+    # A clone made without Git LFS holds a small text pointer in the seed's place, which the mod would take for a
+    # broken zip.
+    $isLfsPointer = (Test-Path $data -PathType Leaf) -and (Get-Item $data).Length -lt 1024 -and
+        (Get-Content $data -TotalCount 1) -eq 'version https://git-lfs.github.com/spec/v1'
+    if ($isLfsPointer)
+    {
+        throw "$serverDataFile is a Git LFS pointer, not the seed. Install Git LFS and run 'git lfs pull' in $scriptDir."
+    }
+    elseif (Test-Path $data -PathType Leaf)
     {
         $contentRoot = Join-Path $serverRoot 'content'
         New-Item -ItemType Directory -Path $contentRoot -Force | Out-Null
@@ -154,7 +162,7 @@ if ($serverDataFile)
     }
     else
     {
-        Write-Warning "No $serverDataFile, so the mod folder has no seed. Fetch the seed first (see README.md)."
+        Write-Warning "No $serverDataFile, so the mod folder has no seed (see README.md)."
     }
 }
 Copy-BuildArtifacts -Files $manifestFiles -BaseDir $contentDir -DestRoot $modRoot
