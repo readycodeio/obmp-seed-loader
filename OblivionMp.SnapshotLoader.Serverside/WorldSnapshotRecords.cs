@@ -144,3 +144,13 @@ public struct LeveledItemEntryRecord
     [JsonConverter(typeof(JsonStringEnumConverter<FormType>))]
     public FormType? Kind;
 }
+
+public struct DoorSchedulesFileRecord
+{
+    public List<DoorScheduleRecord> Doors;
+}
+
+public struct DoorScheduleRecord
+{
+    public uint RefId;
+}

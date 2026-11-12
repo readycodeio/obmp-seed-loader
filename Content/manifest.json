@@ -1,6 +1,6 @@
 {
   "uniqueId": "OblivionMp.SeedLoader",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "OblivionMP seed loader",
   "author": "ReadyM Team",
   "description": "Seeds each new cell with its placed content, and a new world with item values and npc templates, from the seed.",

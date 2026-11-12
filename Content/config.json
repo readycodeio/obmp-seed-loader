@@ -1,0 +1,7 @@
+{
+  "DoorSchedule": {
+    "Enabled": true,
+    "OpenHour": 10,
+    "CloseHour": 22
+  }
+}
