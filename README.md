@@ -32,15 +32,18 @@ After a server restart each door gets the state its schedule says.
 
 `config.json` in the mod's `server/` folder sets it:
 
-```jsonc
+```json
 {
   "DoorSchedule": {
-    "Enabled": true,   // false leaves every door to your own server logic
-    "OpenHour": 10,    // 0 to 23
-    "CloseHour": 22    // 0 to 23, before OpenHour for a schedule that is open across midnight
+    "Enabled": true,
+    "OpenHour": 10,
+    "CloseHour": 22
   }
 }
 ```
+
+- `Enabled`: `false` leaves every door to your own server logic.
+- `OpenHour`, `CloseHour`: 0 to 23. A `CloseHour` before `OpenHour` is a schedule that is open across midnight.
 
 The doors change through the SDK's `LockChangeEvent`, raised by the server as a `Script` change, so a mod that claims a
 door's ref keeps it to itself. The list is part of the seed from schema v9.

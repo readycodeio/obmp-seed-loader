@@ -1,7 +1,4 @@
 {
-  // The doors the game keeps on a schedule (shops, guild halls, houses whose owners lock up at night), listed in the
-  // seed. They unlock at OpenHour and lock at CloseHour, in game hours. Set Enabled to false to leave every door to
-  // your own server logic.
   "DoorSchedule": {
     "Enabled": true,
     "OpenHour": 10,
