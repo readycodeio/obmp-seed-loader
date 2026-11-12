@@ -9,7 +9,7 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 
 public sealed class WorldSnapshot
 {
-    public const int SchemaVersion = 8;
+    public const int SchemaVersion = 9;
 
     private const string SeedFileName = "seed.zip";
     private const string WorldFolder = "world";
@@ -69,16 +69,8 @@ public sealed class WorldSnapshot
         _npcTemplates.AddRange(Read(NpcTemplatesFileName, WorldSnapshotJsonContext.Default.NpcTemplatesFileRecord).Npcs);
         _loadOrder.AddRange(index.LoadOrder);
 
-        // A seed exported before door schedules has no such file
-        if (_seed.GetEntry(EntryName(DoorSchedulesFileName)) is not null)
-        {
-            foreach (var door in Read(DoorSchedulesFileName, WorldSnapshotJsonContext.Default.DoorSchedulesFileRecord).Doors)
-                _scheduledDoors.Add(door.RefId);
-        }
-        else
-        {
-            logger.LogWarning("Seed at {Path} has no {Entry}, no door is on a schedule", seedPath, EntryName(DoorSchedulesFileName));
-        }
+        foreach (var door in Read(DoorSchedulesFileName, WorldSnapshotJsonContext.Default.DoorSchedulesFileRecord).Doors)
+            _scheduledDoors.Add(door.RefId);
 
         logger.LogInformation("Seed with {Areas} areas, {Cells} cells, {Lists} leveled item lists, {Values} item values, {Npcs} npc templates and {Doors} scheduled doors, load order {LoadOrder}", index.Areas.Count, _fileByCell.Count, _leveledItemListById.Count, _itemValues.Count, _npcTemplates.Count, _scheduledDoors.Count, string.Join(", ", index.LoadOrder));
     }

@@ -43,7 +43,7 @@ After a server restart each door gets the state its schedule says.
 ```
 
 The doors change through the SDK's `LockChangeEvent`, raised by the server as a `Script` change, so a mod that claims a
-door's ref keeps it to itself. A seed exported before door schedules has no list and no door follows one.
+door's ref keeps it to itself. The list is part of the seed from schema v9.
 
 ## The seed
 
