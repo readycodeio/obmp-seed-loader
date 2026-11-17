@@ -176,7 +176,7 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         seedOrigin.IsPersistent = reference.Persistent == true;
     }
 
-    private static void SetPlaced(EntityHandle entity, RefRecord reference)
+    private void SetPlaced(EntityHandle entity, RefRecord reference)
     {
         entity.As<RefIdMixin>().RefId = reference.RefId;
         entity.As<BaseIdMixin>().BaseId = new FormId(reference.BaseId);
@@ -184,6 +184,8 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         transform.Position = TesUnrealSpace.ToUnrealLocation(new(reference.Position.X, reference.Position.Y, reference.Position.Z));
         transform.Rotation = TesUnrealSpace.ToUnrealYawDegrees(reference.Rotation.Z);
         entity.As<Presence>().IsDisabled = reference.InitiallyDisabled == true;
+        if (reference.Persistent == true)
+            entities.MakeResident(entity);
     }
 
     private static bool IsSeeded(RefRecord reference) => SeededFormTypes.IsSeeded(reference.BaseType);
