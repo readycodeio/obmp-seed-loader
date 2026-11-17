@@ -4,6 +4,7 @@ using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 using ReadyM.Api.Idents;
 using ReadyM.Relay.Common.Oblivion;
+using ReadyM.Relay.Common.Oblivion.ECS.Values;
 
 namespace OblivionMp.SnapshotLoader.Serverside;
 
@@ -26,6 +27,7 @@ public sealed class WorldSnapshot
     private readonly List<ItemValueRecord> _itemValues = [];
     private readonly List<NpcTemplateRecord> _npcTemplates = [];
     private readonly HashSet<uint> _scheduledDoors = [];
+    private readonly HashSet<uint> _persistentActors = [];
     private readonly List<string> _loadOrder = [];
 
     public WorldSnapshot(ILogger logger, SeedSettings settings)
@@ -72,8 +74,21 @@ public sealed class WorldSnapshot
         foreach (var door in Read(DoorSchedulesFileName, WorldSnapshotJsonContext.Default.DoorSchedulesFileRecord).Doors)
             _scheduledDoors.Add(door.RefId);
 
-        logger.LogInformation("Seed with {Areas} areas, {Cells} cells, {Lists} leveled item lists, {Values} item values, {Npcs} npc templates and {Doors} scheduled doors, load order {LoadOrder}", index.Areas.Count, _fileByCell.Count, _leveledItemListById.Count, _itemValues.Count, _npcTemplates.Count, _scheduledDoors.Count, string.Join(", ", index.LoadOrder));
+        // An actor walks, so the cell that reports it need not be the cell the seed places it in
+        foreach (var file in _fileByCell.Values)
+        {
+            foreach (var reference in Read(file, WorldSnapshotJsonContext.Default.CellFileRecord).References)
+            {
+                if (reference.Persistent == true && reference.BaseType is FormType.NPC or FormType.Creature)
+                    _persistentActors.Add(reference.RefId);
+            }
+        }
+
+        logger.LogInformation("Seed with {Areas} areas, {Cells} cells, {Actors} persistent actors, {Lists} leveled item lists, {Values} item values, {Npcs} npc templates and {Doors} scheduled doors, load order {LoadOrder}", index.Areas.Count, _fileByCell.Count, _persistentActors.Count, _leveledItemListById.Count, _itemValues.Count, _npcTemplates.Count, _scheduledDoors.Count, string.Join(", ", index.LoadOrder));
     }
+
+    /// <summary>The ref ids of the npcs and creatures the game keeps in memory wherever they are, or none without a seed.</summary>
+    public IReadOnlySet<uint> PersistentActors => _persistentActors;
 
     public IReadOnlyList<ItemValueRecord> ItemValues => _itemValues;
 
