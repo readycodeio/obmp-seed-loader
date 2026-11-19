@@ -2,11 +2,13 @@ using Microsoft.Extensions.Logging;
 using OblivionMP.SDK.Common.Archetypes;
 using OblivionMP.SDK.Common.Archetypes.Mixins;
 using OblivionMP.SDK.Common.Events;
+using ReadyM.Api.Idents;
 using ReadyM.Relay.Common.Oblivion.Rpc;
 using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Entities;
 using ReadyM.SDK.Events;
+using ReadyM.SDK.Server.Dimensions;
 using ReadyM.SDK.Server.Entities;
 using AreaTime = OblivionMP.SDK.Common.Archetypes.Mixins.Time;
 
@@ -14,13 +16,15 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 
 /// <summary>
 /// Unlocks the doors the seed lists as scheduled at the configured opening hour and locks them at the closing hour,
-/// by each door's own game clock. Off in the config, it leaves every door to the server's own logic.
+/// by each door's own game clock. Off in the config, it leaves every door to the server's own logic. Every dimension's
+/// copy of a door follows the schedule on its own, by its own area's clock.
 /// </summary>
 [Service]
 public sealed partial class DoorScheduleSystem(
     SeedLoaderConfig config,
     WorldSnapshot snapshot,
     IEntities entities,
+    IDimensions dimensions,
     INetworkedEvents events,
     ILogger logger
 )
@@ -28,7 +32,8 @@ public sealed partial class DoorScheduleSystem(
     private const float ScanIntervalSeconds = 1.0f;
 
     private readonly ScheduledDoorTracker _tracker = new();
-    private readonly Dictionary<uint, Door> _doorByRefId = [];
+    private readonly Dictionary<(DimensionId Dimension, uint RefId), Door> _doorByKey = [];
+    private readonly HashSet<DimensionId> _withDoors = [];
     private DailyLockSchedule? _schedule;
     private float _sinceScan = ScanIntervalSeconds;
 
@@ -64,45 +69,54 @@ public sealed partial class DoorScheduleSystem(
             return;
 
         _sinceScan = 0.0f;
-        _doorByRefId.Clear();
+        _doorByKey.Clear();
+        _withDoors.Clear();
         foreach (var door in entities.Query<Door>())
         {
-            if (snapshot.ScheduledDoors.Contains(door.RefId))
-                _doorByRefId[door.RefId] = door;
+            if (!snapshot.ScheduledDoors.Contains(door.RefId))
+                continue;
+
+            var dimension = dimensions.GetEntityDimension(EntityHandle.Of(door));
+            _doorByKey[(dimension, door.RefId)] = door;
+            _withDoors.Add(dimension);
         }
 
-        foreach (var door in _doorByRefId.Values)
-            Follow(schedule, door);
+        _tracker.KeepOnly(_withDoors);
+        foreach (var ((dimension, _), door) in _doorByKey)
+            Follow(schedule, dimension, door);
     }
 
-    private void Follow(DailyLockSchedule schedule, Door door)
+    private void Follow(DailyLockSchedule schedule, DimensionId dimension, Door door)
     {
         var linkedRefId = EntityHandle.Of(door).As<DoorwaySeedOrigin>().LinkedRefId;
-        if (LatestGameHours(door, linkedRefId) is not { } gameHours)
+        if (LatestGameHours(dimension, door, linkedRefId) is not { } gameHours)
             return;
 
         var change = schedule.LastChange(gameHours);
-        if (!_tracker.TryTake(door.RefId, linkedRefId, change))
+        if (!_tracker.TryTake(dimension, door.RefId, linkedRefId, change))
             return;
 
         if (EntityHandle.Of(door).As<LockState>().IsLocked == change.IsLocked)
             return;
 
-        events.Raise(new LockChangeEvent { RefId = door.RefId, IsLocked = change.IsLocked, Source = LockChangeSource.Script });
-        logger.LogInformation("Door {RefId:X8} {Change} by its schedule", door.RefId, change.IsLocked ? "locked" : "unlocked");
+        // No subject: the ref names the door, so the event goes in the door's dimension
+        events.RaiseIn(dimension, new LockChangeEvent { RefId = door.RefId, IsLocked = change.IsLocked, Source = LockChangeSource.Script });
+        logger.LogInformation("Door {RefId:X8} in {Dimension} {Change} by its schedule", door.RefId, dimension, change.IsLocked ? "locked" : "unlocked");
     }
 
     // An area nobody is in keeps the time it had when the last player left, so a load door pair goes by the later clock
-    private double? LatestGameHours(Door door, uint linkedRefId)
+    private double? LatestGameHours(DimensionId dimension, Door door, uint linkedRefId)
     {
-        var own = GameHours(door);
-        var linked = linkedRefId != 0 && _doorByRefId.TryGetValue(linkedRefId, out var partner) ? GameHours(partner) : null;
+        var own = GameHours(dimension, door);
+        var linked = linkedRefId != 0 && _doorByKey.TryGetValue((dimension, linkedRefId), out var partner)
+            ? GameHours(dimension, partner)
+            : null;
         return own is { } a && linked is { } b ? Math.Max(a, b) : own ?? linked;
     }
 
-    private double? GameHours(Door door)
+    private double? GameHours(DimensionId dimension, Door door)
     {
-        if (!entities.TryGetScope(door, out Cell cell) || !entities.TryLookup(cell.FullCellId.AreaId, out Area area))
+        if (!entities.TryGetScope(door, out Cell cell) || !entities.TryLookup(cell.FullCellId.AreaId, dimension, out Area area))
             return null;
 
         var time = area.As<AreaTime>();
