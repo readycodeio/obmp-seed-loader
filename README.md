@@ -22,31 +22,30 @@ Without it, or with one written for another schema version, the mod logs a warni
 ## Door schedules
 
 In the single-player game, shops, guild halls and some houses unlock in the morning and lock at night, because their
-owners' AI packages say so. OblivionMP does not run that part of the game: the server owns every lock. This mod gives
-those doors one schedule instead. The seed lists them in `world/door-schedules.json`; every one unlocks at
-`OpenHour` and locks at `CloseHour`, by the game clock of the area the door is in. A load door pair goes by the later
-of its two areas' clocks, since an area nobody is in keeps the time it had when the last player left.
+owners' AI packages say so. OblivionMP does not run that part of the game: the server owns every lock. The seed carries
+each such door's own hours, read off its owners' packages, and this mod puts them on the door when it seeds it, as the
+SDK's `LockSchedule`: the hours of the game day the lock changes at, and what it changes to. A shop with a midday break
+has four changes a day, a plain one two. Packages with conditions (a quest stage, a day of the week) are not part of it.
 
-A change is applied once, when the clock passes it, so a door picked open at night stays open until the next closing.
-After a server restart each door gets the state its schedule says.
+From there the SDK follows the schedule, by the world's game clock. A change is applied once, when the clock passes its
+hour, so a door picked open at night stays open until the next closing, also across a server restart. The doors change
+through the SDK's `LockChangeEvent`, raised by the server with the source `Schedule`: a mod's handler can refuse it, and
+a mod that claims a door's ref keeps it to itself. To take one door off its schedule, set `IsEnabled` of its
+`LockSchedule` to false, or write other hours into it.
 
 `config.json` in the mod's `server/` folder sets it:
 
 ```json
 {
   "DoorSchedule": {
-    "Enabled": true,
-    "OpenHour": 10,
-    "CloseHour": 22
+    "Enabled": true
   }
 }
 ```
 
-- `Enabled`: `false` leaves every door to your own server logic.
-- `OpenHour`, `CloseHour`: 0 to 23. A `CloseHour` before `OpenHour` is a schedule that is open across midnight.
+- `Enabled`: `false` seeds every door with no schedule, and leaves the locks to your own server logic.
 
-The doors change through the SDK's `LockChangeEvent`, raised by the server as a `Script` change, so a mod that claims a
-door's ref keeps it to itself. The list is part of the seed from schema v9.
+The hours are part of the seed from schema v10, and only a world seeded from it has them.
 
 ## The seed
 
