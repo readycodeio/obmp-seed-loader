@@ -8,5 +8,4 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 [JsonSerializable(typeof(LeveledItemsFileRecord))]
 [JsonSerializable(typeof(ItemValuesFileRecord))]
 [JsonSerializable(typeof(NpcTemplatesFileRecord))]
-[JsonSerializable(typeof(DoorSchedulesFileRecord))]
 internal partial class WorldSnapshotJsonContext : JsonSerializerContext;

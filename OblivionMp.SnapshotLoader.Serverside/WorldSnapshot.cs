@@ -10,7 +10,7 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 
 public sealed class WorldSnapshot
 {
-    public const int SchemaVersion = 9;
+    public const int SchemaVersion = 10;
 
     private const string SeedFileName = "seed.zip";
     private const string WorldFolder = "world";
@@ -18,7 +18,6 @@ public sealed class WorldSnapshot
     private const string LeveledItemsFileName = "leveled-items.json";
     private const string ItemValuesFileName = "item-values.json";
     private const string NpcTemplatesFileName = "npc-templates.json";
-    private const string DoorSchedulesFileName = "door-schedules.json";
 
     // Not thread-safe, which is fine: the seeders run on the game thread.
     private readonly ZipArchive? _seed;
@@ -26,7 +25,6 @@ public sealed class WorldSnapshot
     private readonly Dictionary<uint, LeveledItemRecord> _leveledItemListById = [];
     private readonly List<ItemValueRecord> _itemValues = [];
     private readonly List<NpcTemplateRecord> _npcTemplates = [];
-    private readonly HashSet<uint> _scheduledDoors = [];
     private readonly HashSet<uint> _persistentActors = [];
     private readonly List<string> _loadOrder = [];
 
@@ -71,9 +69,6 @@ public sealed class WorldSnapshot
         _npcTemplates.AddRange(Read(NpcTemplatesFileName, WorldSnapshotJsonContext.Default.NpcTemplatesFileRecord).Npcs);
         _loadOrder.AddRange(index.LoadOrder);
 
-        foreach (var door in Read(DoorSchedulesFileName, WorldSnapshotJsonContext.Default.DoorSchedulesFileRecord).Doors)
-            _scheduledDoors.Add(door.RefId);
-
         // An actor walks, so the cell that reports it need not be the cell the seed places it in
         foreach (var file in _fileByCell.Values)
         {
@@ -84,7 +79,7 @@ public sealed class WorldSnapshot
             }
         }
 
-        logger.LogInformation("Seed with {Areas} areas, {Cells} cells, {Actors} persistent actors, {Lists} leveled item lists, {Values} item values, {Npcs} npc templates and {Doors} scheduled doors, load order {LoadOrder}", index.Areas.Count, _fileByCell.Count, _persistentActors.Count, _leveledItemListById.Count, _itemValues.Count, _npcTemplates.Count, _scheduledDoors.Count, string.Join(", ", index.LoadOrder));
+        logger.LogInformation("Seed with {Areas} areas, {Cells} cells, {Actors} persistent actors, {Lists} leveled item lists, {Values} item values and {Npcs} npc templates, load order {LoadOrder}", index.Areas.Count, _fileByCell.Count, _persistentActors.Count, _leveledItemListById.Count, _itemValues.Count, _npcTemplates.Count, string.Join(", ", index.LoadOrder));
     }
 
     /// <summary>The ref ids of the npcs and creatures the game keeps in memory wherever they are, or none without a seed.</summary>
@@ -94,9 +89,6 @@ public sealed class WorldSnapshot
     public IReadOnlyCollection<FullCellId> Cells => _fileByCell.Keys;
 
     public IReadOnlyList<ItemValueRecord> ItemValues => _itemValues;
-
-    /// <summary>The ref ids of the doors the game locks and unlocks on their owner's schedule, or none without a seed.</summary>
-    public IReadOnlySet<uint> ScheduledDoors => _scheduledDoors;
 
     public IReadOnlyList<NpcTemplateRecord> NpcTemplates => _npcTemplates;
 

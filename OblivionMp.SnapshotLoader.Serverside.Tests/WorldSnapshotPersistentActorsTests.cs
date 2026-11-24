@@ -38,7 +38,6 @@ public sealed class WorldSnapshotPersistentActorsTests : IDisposable
             ["leveled-items.json"] = """{"Lists":[]}""",
             ["item-values.json"] = """{"Items":[]}""",
             ["npc-templates.json"] = """{"Npcs":[]}""",
-            ["door-schedules.json"] = """{"Doors":[]}""",
         });
 
         var snapshot = new WorldSnapshot(NullLogger.Instance, new SeedSettings(_contentFolder));
