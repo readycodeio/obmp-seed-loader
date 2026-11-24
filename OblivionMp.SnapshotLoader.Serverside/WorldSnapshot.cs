@@ -90,6 +90,9 @@ public sealed class WorldSnapshot
     /// <summary>The ref ids of the npcs and creatures the game keeps in memory wherever they are, or none without a seed.</summary>
     public IReadOnlySet<uint> PersistentActors => _persistentActors;
 
+    /// <summary>Every cell the seed has a file for, or none without a seed.</summary>
+    public IReadOnlyCollection<FullCellId> Cells => _fileByCell.Keys;
+
     public IReadOnlyList<ItemValueRecord> ItemValues => _itemValues;
 
     /// <summary>The ref ids of the doors the game locks and unlocks on their owner's schedule, or none without a seed.</summary>

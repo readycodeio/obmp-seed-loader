@@ -12,16 +12,40 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 
 /// <summary>
 /// Fills a new World from the world snapshot: the item values trade checks against, and the npc templates inventories
-/// are rolled from. Both are Global, so a World loaded from the save already has them.
+/// are rolled from, both Global, and every persistent ref as a resident of its cell. A World loaded from the save
+/// already has them.
 /// </summary>
 [Service]
-public sealed partial class SnapshotWorldSeeder(WorldSnapshot snapshot, IEntities entities, ILogger logger)
+public sealed partial class SnapshotWorldSeeder(WorldSnapshot snapshot, SnapshotEntitySeeder entitySeeder, IEntities entities, ILogger logger)
     : IWorldSeeder
 {
     public void Seed(World world)
     {
         SeedItemValues();
         SeedNpcTemplates();
+        SeedPersistentRefs();
+    }
+
+    // A script or another cell can name a persistent ref whether or not anyone has been to its cell
+    private void SeedPersistentRefs()
+    {
+        var seeded = 0;
+        foreach (var cellId in snapshot.Cells)
+        {
+            if (!snapshot.TryLoadCell(cellId, out var file))
+                throw new InvalidOperationException($"The seed lists cell {cellId} and has no file for it.");
+
+            foreach (var reference in file.References)
+            {
+                if (reference.Persistent != true || !SnapshotEntitySeeder.IsSeeded(reference) || !entitySeeder.TrySeed(reference, cellId, null, out var entity))
+                    continue;
+
+                entities.MakeResident(entity, cellId);
+                seeded++;
+            }
+        }
+
+        logger.LogInformation("Seeded {Count} persistent refs as residents of their cells", seeded);
     }
 
     private void SeedItemValues()

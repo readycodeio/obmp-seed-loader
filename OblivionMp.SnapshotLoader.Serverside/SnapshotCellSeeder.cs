@@ -1,15 +1,7 @@
 using Microsoft.Extensions.Logging;
-using OblivionMP.SDK.Common.Archetypes;
-using OblivionMP.SDK.Common.Archetypes.Mixins;
-using OblivionMP.SDK.Serverside.Archetypes;
-using ReadyM.Api.Idents;
-using ReadyM.Relay.Common.Oblivion;
 using ReadyM.Relay.Common.Oblivion.ECS.Values;
-using ReadyM.SDK.Archetypes;
 using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
-using ReadyM.SDK.Entities;
-using ReadyM.SDK.Server.Entities;
 using ReadyM.SDK.Server.Seeding;
 
 namespace OblivionMp.SnapshotLoader.Serverside;
@@ -18,18 +10,17 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 /// Fills a new cell from the world snapshot: furniture, containers, plants and items. The server calls it only for a
 /// cell with no save, so nothing of the cell exists yet. No player is in it: what it creates is the server's until the
 /// first player enters, and containers are rolled at that player's level by <c>CellRespawnSystem</c>, which also marks
-/// the cell seeded.
+/// the cell seeded. The cell's persistent refs are not its content: <see cref="SnapshotWorldSeeder"/> made them with
+/// the world.
 /// </summary>
 [Service]
-public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities entities, ILogger logger)
+public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, SnapshotEntitySeeder entitySeeder, ILogger logger)
     : ICellSeeder
 {
-    private const float NoInstanceOverride = -1f;
-
     public void Seed(Cell cell)
     {
         var cellId = cell.FullCellId;
-        if (!snapshot.TryLoadCell(cellId, out var file) || !file.References.Exists(IsSeeded))
+        if (!snapshot.TryLoadCell(cellId, out var file))
             return;
 
         var furniture = 0;
@@ -40,153 +31,33 @@ public sealed partial class SnapshotCellSeeder(WorldSnapshot snapshot, IEntities
         var items = 0;
         foreach (var reference in file.References)
         {
-            if (!IsSeeded(reference))
+            if (!SnapshotEntitySeeder.IsSeeded(reference) || reference.Persistent == true || !entitySeeder.TrySeed(reference, cellId, cell, out _))
                 continue;
 
-            if (reference.BaseType == FormType.Furniture)
+            switch (reference.BaseType)
             {
-                SetPlaced(EntityHandle.Of(entities.Create<Furniture>(Scope.Of(cell))), reference);
-                furniture++;
-            }
-            else if (reference.BaseType == FormType.Container)
-            {
-                SeedContainer(cell, reference);
-                containers++;
-            }
-            else if (reference.BaseType == FormType.Flora)
-            {
-                if (reference.IngredientId is null)
-                {
-                    logger.LogDebug("Plant {RefId:X} in {Cell} gives no ingredient, it is not seeded", reference.RefId, cellId);
-                    continue;
-                }
-
-                SetPlaced(EntityHandle.Of(entities.Create<Flora>(Scope.Of(cell))), reference);
-                flora++;
-            }
-            else if (reference.BaseType == FormType.Door)
-            {
-                SeedDoor(cell, reference);
-                doors++;
-            }
-            else if (reference.BaseType == FormType.Activator)
-            {
-                SetPlaced(EntityHandle.Of(entities.Create<WorldActivator>(Scope.Of(cell))), reference);
-                activators++;
-            }
-            else
-            {
-                SeedItem(cell, reference);
-                items++;
+                case FormType.Furniture:
+                    furniture++;
+                    break;
+                case FormType.Container:
+                    containers++;
+                    break;
+                case FormType.Flora:
+                    flora++;
+                    break;
+                case FormType.Door:
+                    doors++;
+                    break;
+                case FormType.Activator:
+                    activators++;
+                    break;
+                default:
+                    items++;
+                    break;
             }
         }
 
-        logger.LogInformation("Seeded {Furniture} furniture, {Containers} containers, {Flora} plants, {Doors} doors, {Activators} activators and {Items} items in {Cell}", furniture, containers, flora, doors, activators, items, cellId);
+        if (furniture + containers + flora + doors + activators + items > 0)
+            logger.LogInformation("Seeded {Furniture} furniture, {Containers} containers, {Flora} plants, {Doors} doors, {Activators} activators and {Items} items in {Cell}", furniture, containers, flora, doors, activators, items, cellId);
     }
-
-    private void SeedContainer(Cell cell, RefRecord reference)
-    {
-        var template = entities.Create<ContainerTemplate>();
-        template.RefId = reference.RefId;
-        template.IsOwnedByMerchant = reference.IsOwnedByMerchant == true;
-        template.Respawns = reference.Respawns == true;
-        template.MerchantRefId = reference.MerchantRefId ?? 0;
-        template.BarterGold = reference.BarterGold ?? 0;
-        foreach (var item in reference.Items ?? [])
-        {
-            if (item.Kind is not { } kind)
-            {
-                logger.LogError("Container {RefId:X} in {Cell}: base item {ItemId:X8} has no kind in the seed, it is left out", reference.RefId, cell.FullCellId, item.ItemId);
-                continue;
-            }
-
-            if (kind == FormType.LeveledItem)
-                LeveledListSeeding.Ensure(snapshot, entities, logger, item.ItemId);
-
-            template.AddItems(new BaseContainerItem(new FormId(item.ItemId), item.Count, kind));
-        }
-
-        // Not rolled here: no player is in the cell yet. CellRespawnSystem rolls it at the first master's level.
-        var container = entities.Create<Container>(Scope.Of(cell));
-        SetPlaced(EntityHandle.Of(container), reference);
-        SeedLock(EntityHandle.Of(container), reference);
-    }
-
-    private void SeedDoor(Cell cell, RefRecord reference)
-    {
-        var door = entities.Create<Door>(Scope.Of(cell));
-        SetPlaced(EntityHandle.Of(door), reference);
-        SeedLock(EntityHandle.Of(door), reference);
-        var isOpenByDefault = reference.IsOpenByDefault == true;
-        var seedOrigin = EntityHandle.Of(door).As<DoorwaySeedOrigin>();
-        seedOrigin.IsOpenByDefault = isOpenByDefault;
-        seedOrigin.LinkedRefId = reference.Teleport?.DestinationRefId ?? 0;
-        EntityHandle.Of(door).As<Doorway>().IsOpen = isOpenByDefault;
-        // The other door of the pair may have been seeded and unlocked long before this cell
-        if (seedOrigin.LinkedRefId != 0 && TryFindDoor(seedOrigin.LinkedRefId, out var partner))
-            CopyLock(partner, door);
-    }
-
-    private bool TryFindDoor(uint refId, out Door door)
-    {
-        foreach (var candidate in entities.Query<Door>())
-        {
-            if (candidate.RefId == refId)
-            {
-                door = candidate;
-                return true;
-            }
-        }
-
-        door = default;
-        return false;
-    }
-
-    private static void CopyLock(Door from, Door to)
-    {
-        var source = EntityHandle.Of(from).As<LockState>();
-        var target = EntityHandle.Of(to).As<LockState>();
-        target.IsLocked = source.IsLocked;
-        target.Level = source.Level;
-    }
-
-    private static void SeedLock(EntityHandle holder, RefRecord reference)
-    {
-        if (reference.Lock is not { } lockRecord)
-            return;
-
-        var lockState = holder.As<LockState>();
-        lockState.IsLocked = true;
-        lockState.Level = lockRecord.Level;
-        var seedOrigin = holder.As<LockSeedOrigin>();
-        seedOrigin.Key = new FormId(lockRecord.KeyId ?? 0);
-        seedOrigin.IsLeveled = lockRecord.IsLeveled == true;
-    }
-
-    private void SeedItem(Cell cell, RefRecord reference)
-    {
-        var item = entities.Create<DroppedItem>(Scope.Of(cell));
-        SetPlaced(EntityHandle.Of(item), reference);
-        item.StackSize = reference.Count ?? 1;
-        var extraData = EntityHandle.Of(item).As<ItemExtraData>();
-        extraData.Durability = NoInstanceOverride;
-        extraData.Charge = NoInstanceOverride;
-        var seedOrigin = EntityHandle.Of(item).As<SeedOrigin>();
-        seedOrigin.SeededCount = reference.Count ?? 1;
-        seedOrigin.IsPersistent = reference.Persistent == true;
-    }
-
-    private void SetPlaced(EntityHandle entity, RefRecord reference)
-    {
-        entity.As<RefIdMixin>().RefId = reference.RefId;
-        entity.As<BaseIdMixin>().BaseId = new FormId(reference.BaseId);
-        var transform = entity.As<Transform>();
-        transform.Position = TesUnrealSpace.ToUnrealLocation(new(reference.Position.X, reference.Position.Y, reference.Position.Z));
-        transform.Rotation = TesUnrealSpace.ToUnrealYawDegrees(reference.Rotation.Z);
-        entity.As<Presence>().IsDisabled = reference.InitiallyDisabled == true;
-        if (reference.Persistent == true)
-            entities.MakeResident(entity);
-    }
-
-    private static bool IsSeeded(RefRecord reference) => SeededFormTypes.IsSeeded(reference.BaseType);
 }
