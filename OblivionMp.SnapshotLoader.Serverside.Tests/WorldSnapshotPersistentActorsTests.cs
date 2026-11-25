@@ -46,6 +46,32 @@ public sealed class WorldSnapshotPersistentActorsTests : IDisposable
     }
 
     [Fact]
+    public void Low_process_refs_are_the_ones_the_seed_marks()
+    {
+        WriteSeed(new()
+        {
+            ["index.json"] = $$"""
+                {"SchemaVersion":{{WorldSnapshot.SchemaVersion}},"LoadOrder":[],"Areas":[
+                    {"AreaId":"Tavern","IsInterior":true,"Cells":[{"File":"Tavern/interior.json"}]}]}
+                """,
+            ["Tavern/interior.json"] = """
+                {"References":[
+                    {"RefId":10,"BaseId":1,"BaseType":"NPC","Persistent":true,"LowProcess":true},
+                    {"RefId":11,"BaseId":1,"BaseType":"NPC","Persistent":true},
+                    {"RefId":12,"BaseId":3,"BaseType":"Creature","Persistent":true,"LowProcess":true},
+                    {"RefId":13,"BaseId":2,"BaseType":"Door","Persistent":true}]}
+                """,
+            ["leveled-items.json"] = """{"Lists":[]}""",
+            ["item-values.json"] = """{"Items":[]}""",
+            ["npc-templates.json"] = """{"Npcs":[]}""",
+        });
+
+        var snapshot = new WorldSnapshot(NullLogger.Instance, new SeedSettings(_contentFolder));
+
+        Assert.Equal([10u, 12u], snapshot.LowProcessRefs.Order());
+    }
+
+    [Fact]
     public void No_seed_lists_no_persistent_actors()
     {
         Directory.CreateDirectory(_contentFolder);

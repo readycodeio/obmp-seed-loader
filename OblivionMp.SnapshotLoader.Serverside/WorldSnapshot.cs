@@ -26,6 +26,7 @@ public sealed class WorldSnapshot
     private readonly List<ItemValueRecord> _itemValues = [];
     private readonly List<NpcTemplateRecord> _npcTemplates = [];
     private readonly HashSet<uint> _persistentActors = [];
+    private readonly List<uint> _lowProcessRefs = [];
     private readonly List<string> _loadOrder = [];
 
     public WorldSnapshot(ILogger logger, SeedSettings settings)
@@ -76,6 +77,9 @@ public sealed class WorldSnapshot
             {
                 if (reference.Persistent == true && reference.BaseType is FormType.NPC or FormType.Creature)
                     _persistentActors.Add(reference.RefId);
+
+                if (reference.LowProcess == true)
+                    _lowProcessRefs.Add(reference.RefId);
             }
         }
 
@@ -84,6 +88,9 @@ public sealed class WorldSnapshot
 
     /// <summary>The ref ids of the npcs and creatures the game keeps in memory wherever they are, or none without a seed.</summary>
     public IReadOnlySet<uint> PersistentActors => _persistentActors;
+
+    /// <summary>The ref ids the game keeps running while the player is elsewhere, or none without a seed.</summary>
+    public IReadOnlyList<uint> LowProcessRefs => _lowProcessRefs;
 
     /// <summary>Every cell the seed has a file for, or none without a seed.</summary>
     public IReadOnlyCollection<FullCellId> Cells => _fileByCell.Keys;
