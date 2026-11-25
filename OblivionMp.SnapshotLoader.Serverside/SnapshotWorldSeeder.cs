@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using OblivionMP.SDK.Common.Archetypes;
 using OblivionMP.SDK.Serverside.Archetypes;
 using ReadyM.Api.Idents;
 using ReadyM.Relay.Common.Oblivion;
@@ -24,6 +25,15 @@ public sealed partial class SnapshotWorldSeeder(WorldSnapshot snapshot, Snapshot
         SeedItemValues();
         SeedNpcTemplates();
         SeedPersistentRefs();
+        SeedLowProcesses();
+    }
+
+    private void SeedLowProcesses()
+    {
+        foreach (var refId in snapshot.LowProcessRefs)
+            entities.Create<LowProcess>().RefId = refId;
+
+        logger.LogInformation("Seeded {Count} low process refs", snapshot.LowProcessRefs.Count);
     }
 
     // A script or another cell can name a persistent ref whether or not anyone has been to its cell
