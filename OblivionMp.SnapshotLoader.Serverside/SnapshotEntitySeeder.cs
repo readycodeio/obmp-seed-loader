@@ -16,7 +16,7 @@ namespace OblivionMp.SnapshotLoader.Serverside;
 /// Creates the entity of one seeded ref: furniture, a container, a plant, a door, an activator or an item. In a cell
 /// it is that cell's content. With no cell it is in no scope, for the caller to make a resident.
 /// </summary>
-public sealed class SnapshotEntitySeeder(WorldSnapshot snapshot, SeedLoaderConfig config, IEntities entities, ILogger logger)
+public sealed class SnapshotEntitySeeder(WorldSnapshot snapshot, IEntities entities, ILogger logger)
 {
     private const float NoInstanceOverride = -1f;
 
@@ -101,13 +101,6 @@ public sealed class SnapshotEntitySeeder(WorldSnapshot snapshot, SeedLoaderConfi
         seedOrigin.IsOpenByDefault = isOpenByDefault;
         seedOrigin.LinkedRefId = reference.Teleport?.DestinationRefId ?? 0;
         entity.As<Doorway>().IsOpen = isOpenByDefault;
-        if (config.DoorSchedule.Enabled && reference.LockSchedule is { } changes)
-        {
-            var schedule = entity.As<LockSchedule>();
-            schedule.IsEnabled = true;
-            foreach (var change in changes)
-                schedule.AddChanges(new LockScheduleChange(change.Hour, change.IsLocked));
-        }
 
         // The other door of the pair may have been seeded and unlocked long before this cell. A door seeded with no
         // cell is seeded with the world, when nobody has unlocked anything yet
