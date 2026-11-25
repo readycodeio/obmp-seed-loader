@@ -3,8 +3,7 @@
 Fills the [OblivionMP](https://obmp.readym.io) world from the seed, a snapshot of the game's data, so a fresh server
 is not empty. When a cell is created for the first time, it gets its furniture, containers, plants and items. When a
 new world is created, it gets the item values that trade checks against and the NPC templates that inventories are
-rolled from. Anything that is already saved is left alone. It also opens and closes the doors the game keeps on a
-schedule, see [Door schedules](#door-schedules).
+rolled from. Anything that is already saved is left alone.
 
 It is an optional, server-only mod with no API of its own. Install it and it does its job.
 
@@ -18,34 +17,6 @@ The mod reads it in place, starting at `world/index.json` inside it, and reads e
 created. It is never extracted.
 
 Without it, or with one written for another schema version, the mod logs a warning and seeds nothing.
-
-## Door schedules
-
-In the single-player game, shops, guild halls and some houses unlock in the morning and lock at night, because their
-owners' AI packages say so. OblivionMP does not run that part of the game: the server owns every lock. The seed carries
-each such door's own hours, read off its owners' packages, and this mod puts them on the door when it seeds it, as the
-SDK's `LockSchedule`: the hours of the game day the lock changes at, and what it changes to. A shop with a midday break
-has four changes a day, a plain one two. Packages with conditions (a quest stage, a day of the week) are not part of it.
-
-From there the SDK follows the schedule, by the world's game clock. A change is applied once, when the clock passes its
-hour, so a door picked open at night stays open until the next closing, also across a server restart. The doors change
-through the SDK's `LockChangeEvent`, raised by the server with the source `Schedule`: a mod's handler can refuse it, and
-a mod that claims a door's ref keeps it to itself. To take one door off its schedule, set `IsEnabled` of its
-`LockSchedule` to false, or write other hours into it.
-
-`config.json` in the mod's `server/` folder sets it:
-
-```json
-{
-  "DoorSchedule": {
-    "Enabled": true
-  }
-}
-```
-
-- `Enabled`: `false` seeds every door with no schedule, and leaves the locks to your own server logic.
-
-The hours are part of the seed from schema v10, and only a world seeded from it has them.
 
 ## The seed
 

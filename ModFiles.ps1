@@ -27,9 +27,7 @@ $manifestFiles = @(
 # Copied from "Content" into server/.
 $clientContentFiles = @()
 
-$serverContentFiles = @(
-    "config.json"
-)
+$serverContentFiles = @()
 
 # Copied into server/content/, where the mod reads it: the seed, one zip in Git LFS rather than built. A folder made
 # without it only warns; one made from a clone without Git LFS, which holds a pointer in its place, stops.

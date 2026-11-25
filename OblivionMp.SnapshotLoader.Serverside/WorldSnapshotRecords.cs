@@ -45,7 +45,7 @@ public struct RefRecord
     public bool? Persistent;
     public int? LevelModifier;
     public LockRecord? Lock;
-    public List<LockScheduleChangeRecord>? LockSchedule;
+    public bool? LowProcess;
     public OwnerRecord? Owner;
     public TeleportRecord? Teleport;
     public bool? IsOpenByDefault;
@@ -71,12 +71,6 @@ public struct LockRecord
     public byte Level;
     public uint? KeyId;
     public bool? IsLeveled;
-}
-
-public struct LockScheduleChangeRecord
-{
-    public int Hour;
-    public bool IsLocked;
 }
 
 public struct OwnerRecord
