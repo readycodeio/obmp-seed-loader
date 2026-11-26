@@ -31,7 +31,7 @@ public sealed partial class SnapshotWorldSeeder(WorldSnapshot snapshot, Snapshot
     private void SeedLowProcesses()
     {
         foreach (var refId in snapshot.LowProcessRefs)
-            entities.Create<LowProcess>().RefId = refId;
+            entities.Create<NpcLowProcess>().RefId = refId;
 
         logger.LogInformation("Seeded {Count} low process refs", snapshot.LowProcessRefs.Count);
     }
